@@ -3,6 +3,7 @@ using Serilog.Core;
 using Serilog.Events;
 using System;
 using System.IO;
+using VeloraServer.Configuration;
 
 #nullable enable
 
@@ -77,12 +78,34 @@ namespace VeloraServer.Utils
 
         public static void Debug(string message)
         {
-            _logger?.Debug(message);
+            if (ServerConfig.DEBUG_MODE)
+            {
+                _logger?.Debug(message);
+            }
         }
 
         public static void Debug(string template, params object[] args)
         {
-            _logger?.Debug(template, args);
+            if (ServerConfig.DEBUG_MODE)
+            {
+                _logger?.Debug(template, args);
+            }
+        }
+
+        public static void DebugMessage(string message)
+        {
+            if (ServerConfig.DEBUG_MODE)
+            {
+                _logger?.Debug($"DBG {message}");
+            }
+        }
+
+        public static void DebugMessage(string template, params object[] args)
+        {
+            if (ServerConfig.DEBUG_MODE)
+            {
+                _logger?.Debug($"DBG {template}", args);
+            }
         }
 
         public static void Fatal(string message)

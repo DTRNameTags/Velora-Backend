@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using VeloraServer.Utils;
+using VeloraServer.Configuration;
 
 #nullable enable
 
@@ -15,6 +16,11 @@ namespace VeloraServer
             Log.Initialize();
 
             Log.Info("Starting Velora Game Server...");
+
+            if (ServerConfig.DEBUG_MODE)
+            {
+                Log.DebugMessage("Debug mode is enabled - all debug messages will be displayed");
+            }
 
             Console.CancelKeyPress += async (sender, e) =>
             {

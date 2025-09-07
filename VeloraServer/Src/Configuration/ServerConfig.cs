@@ -3,7 +3,7 @@ namespace VeloraServer.Configuration
     public static class ServerConfig
     {
         // Server Settings
-        public const bool DEBUG_MODE = true;
+        public const bool DEBUG_MODE = false;
         public const int DEFAULT_PORT = 7777;
         public const int AFK_TIMEOUT_MINUTES = 5;
         public const int MAX_PLAYERS = 100;

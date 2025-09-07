@@ -90,7 +90,7 @@ namespace VeloraServer.Services
                 var messageType = (MessageType)data[0];
                 var messageData = data.Skip(1).ToArray();
 
-                Log.Debug($"Received {messageType} from {endPoint}");
+                Log.DebugMessage($"Received {messageType} from {endPoint}");
 
                 switch (messageType)
                 {
@@ -101,11 +101,11 @@ namespace VeloraServer.Services
                         HandleClientDisconnect(endPoint);
                         break;
                     case MessageType.PlayerMovement:
-                        Log.Debug($"Got PlayerMovement message (length: {data.Length}) from {endPoint}");
+                        Log.DebugMessage($"Got PlayerMovement message (length: {data.Length}) from {endPoint}");
                         HandlePlayerMovement(messageData, endPoint);
                         break;
                     case MessageType.PlayerInput:
-                        Log.Debug($"Got PlayerInput message (length: {data.Length}) from {endPoint}");
+                        Log.DebugMessage($"Got PlayerInput message (length: {data.Length}) from {endPoint}");
                         HandlePlayerInput(messageData, endPoint);
                         break;
                     case MessageType.PlayerJump:
@@ -260,7 +260,7 @@ namespace VeloraServer.Services
                 // Update player input
                 _playerManager.UpdatePlayerInput(player.Id, inputDirection, jump, lookRotation);
 
-                Log.Debug($"Received input from player {player.Name}: {inputDirection}, Jump: {jump}");
+                Log.DebugMessage($"Received input from player {player.Name}: {inputDirection}, Jump: {jump}");
                 // Rotation.Y will be used as yaw in broadcast; PlayerManager physics loop will include it
             }
         }
@@ -271,7 +271,7 @@ namespace VeloraServer.Services
             var player = _playerManager.Players.FirstOrDefault(p => p.EndPoint?.Equals(endPoint) == true);
             if (player == null) return;
 
-            Log.Debug($"Received jump from player {player.Name}");
+            Log.DebugMessage($"Received jump from player {player.Name}");
             // For now, just log it - jump handling is done through PlayerInput messages
         }
 

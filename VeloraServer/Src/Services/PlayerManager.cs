@@ -100,7 +100,7 @@ namespace VeloraServer.Services
             if (_players.TryGetValue(playerId, out var player))
             {
                 player.UpdatePosition(position, velocity, rotation, isGrounded);
-                Log.Debug($"Updated position for player {player.Name}: {position}");
+                Log.DebugMessage($"Updated position for player {player.Name}: {position}");
             }
         }
 
@@ -109,7 +109,7 @@ namespace VeloraServer.Services
             if (_players.TryGetValue(playerId, out var player))
             {
                 player.UpdateInput(inputDirection, jumpInput, lookRotation);
-                Log.Debug($"Updated input for player {player.Name}: {inputDirection}, Jump: {jumpInput}");
+                Log.DebugMessage($"Updated input for player {player.Name}: {inputDirection}, Jump: {jumpInput}");
             }
         }
 
@@ -118,7 +118,7 @@ namespace VeloraServer.Services
             if (_players.TryGetValue(playerId, out var player))
             {
                 player.UpdateInput(inputs);
-                Log.Debug($"Updated input for player {player.Name}: Move: {inputs[0]},{inputs[1]},{inputs[2]},{inputs[3]}, Jump: {inputs[4]}");
+                Log.DebugMessage($"Updated input for player {player.Name}: Move: {inputs[0]},{inputs[1]},{inputs[2]},{inputs[3]}, Jump: {inputs[4]}");
             }
         }
 
@@ -138,7 +138,7 @@ namespace VeloraServer.Services
                 if (Vector3.Distance(oldPosition, newPosition) > 0.001f)
                 {
                     anyPlayerMoved = true;
-                    Log.Debug($"Player {player.Name} moved from {oldPosition} to {newPosition}");
+                    Log.DebugMessage($"Player {player.Name} moved from {oldPosition} to {newPosition}");
                 }
             }
 
