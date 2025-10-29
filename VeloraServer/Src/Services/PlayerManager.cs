@@ -20,8 +20,10 @@ namespace VeloraServer.Services
         private readonly object _idLock = new object();
 
         private readonly Timer _physicsTimer;
-        private const float PHYSICS_UPDATE_RATE = 1.0f / 20.0f;
+        private const float PHYSICS_UPDATE_RATE = 1.0f / 20.0f; // 20 ticks per second
+        private const float NETWORK_UPDATE_RATE = 1.0f / 20.0f; // 20 updates per second
         private DateTime _lastPhysicsUpdate;
+        private DateTime _lastNetworkUpdate;
 
         public int PlayerCount => _players.Count;
         public IReadOnlyCollection<Player> Players => _players.Values.ToList().AsReadOnly();
@@ -37,6 +39,7 @@ namespace VeloraServer.Services
             _physicsTimer.AutoReset = true;
             _physicsTimer.Enabled = true;
             _lastPhysicsUpdate = DateTime.UtcNow;
+            _lastNetworkUpdate = DateTime.UtcNow;
         }
 
         public Player? AddPlayer(string name, ClientConnection connection)
@@ -128,22 +131,15 @@ namespace VeloraServer.Services
             float deltaTime = (float)(currentTime - _lastPhysicsUpdate).TotalSeconds;
             _lastPhysicsUpdate = currentTime;
 
-            bool anyPlayerMoved = false;
-            foreach (var player in _players.Values)
-            {
-                var oldPosition = player.Position;
-                player.SimulatePhysics(deltaTime);
+            // Server no longer simulates physics - clients send their positions
+            // Server just validates and relays positions
+            // Physics simulation can be enabled for server-side validation if needed
 
-                var newPosition = player.Position;
-                if (Vector3.Distance(oldPosition, newPosition) > 0.001f)
-                {
-                    anyPlayerMoved = true;
-                    Log.DebugMessage($"Player {player.Name} moved from {oldPosition} to {newPosition}");
-                }
-            }
-
-            if (anyPlayerMoved)
+            // Still broadcast positions periodically for newly joined players
+            float timeSinceLastNetworkUpdate = (float)(currentTime - _lastNetworkUpdate).TotalSeconds;
+            if (timeSinceLastNetworkUpdate >= NETWORK_UPDATE_RATE)
             {
+                _lastNetworkUpdate = currentTime;
                 BroadcastPositionUpdates();
             }
         }
@@ -152,6 +148,15 @@ namespace VeloraServer.Services
         {
             foreach (var player in _players.Values)
             {
+                // Always broadcast if player has input or is moving
+                bool hasMovement = player.Velocity.LengthSquared() > 0.001f || player.InputDirection.LengthSquared() > 0.001f;
+                
+                if (!hasMovement && player.IsGrounded)
+                {
+                    // Skip stationary players to save bandwidth
+                    continue;
+                }
+
                 var message = new byte[1 + 4 + 12 + 4 + 1];
                 var offset = 0;
                 message[offset++] = (byte)MessageType.PlayerPosition;
@@ -162,10 +167,16 @@ namespace VeloraServer.Services
                 Array.Copy(BitConverter.GetBytes(player.Rotation.Y), 0, message, offset, 4); offset += 4;
                 message[offset] = (byte)(player.IsGrounded ? 1 : 0);
 
+                // Broadcast to all other players
                 foreach (var kvp in _connections)
                 {
-                    if (kvp.Key == player.Id) continue;
-                    kvp.Value.SendMessage(message);
+                    if (kvp.Key == player.Id) continue; // Don't send to self
+                    
+                    // Send to players on same map
+                    if (_players.TryGetValue(kvp.Key, out var otherPlayer) && otherPlayer.CurrentMap == player.CurrentMap)
+                    {
+                        kvp.Value.SendMessage(message);
+                    }
                 }
             }
         }
@@ -252,6 +263,34 @@ namespace VeloraServer.Services
                 var data = SerializePlayerJoinMessage(joinMessage);
                 var message = new NetworkMessage(MessageType.PlayerJoined, data);
                 connection.SendMessage(message);
+            }
+        }
+
+        public void SendMatchPlayerListToPlayer(uint playerId, Match match)
+        {
+            var connection = GetConnection(playerId);
+            if (connection == null) return;
+
+            Log.Info($"Sending match player list to player {playerId} - {match.Players.Count} players in match");
+
+            foreach (var matchPlayer in match.Players)
+            {
+                var player = matchPlayer.Player;
+                if (player.Id == playerId) continue; // Don't send self
+
+                var joinMessage = new PlayerJoinMessage
+                {
+                    PlayerId = player.Id,
+                    PlayerName = player.Name,
+                    SpawnPosition = player.Position, // Use current position which should be spawn position
+                    JoinTime = player.JoinTime
+                };
+
+                var data = SerializePlayerJoinMessage(joinMessage);
+                var message = new NetworkMessage(MessageType.PlayerJoined, data);
+                connection.SendMessage(message);
+
+                Log.Info($"Sent player {player.Id} info to player {playerId}: Position={player.Position}");
             }
         }
 

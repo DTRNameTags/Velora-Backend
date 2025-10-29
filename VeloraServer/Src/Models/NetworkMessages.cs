@@ -73,6 +73,23 @@ namespace VeloraServer.Models
         PlayerDeath = 50,
         PlayerRespawn = 51,
 
+        // Matchmaking
+        QueueJoinRequest = 60,
+        QueueLeaveRequest = 61,
+        QueueJoined = 62,
+        QueueLeft = 63,
+        QueueUpdate = 64,
+        MatchFound = 65,
+        MatchPlayerReady = 66,
+        MatchStart = 67,
+        MatchPreparing = 68,
+        MatchEnd = 69,
+        MatchConfig = 70,
+    MatchCancel = 71,
+    PodiumInteraction = 72,
+    InteractionZoneEnter = 73,
+    InteractionZoneExit = 74,
+
         // Server
         Ping = 100,
         Pong = 101,

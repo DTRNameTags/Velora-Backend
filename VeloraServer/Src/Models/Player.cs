@@ -45,6 +45,17 @@ namespace VeloraServer.Models
         public string CurrentMap { get; set; } = "DefaultMap";
         public bool IsReady { get; set; } = false;
 
+        // Matchmaking State
+        public QueueState QueueState { get; set; } = QueueState.NotInQueue;
+        public Guid? CurrentMatchId { get; set; } = null;
+        public DateTime? QueueJoinTime { get; set; } = null;
+        public bool IsNearPodium { get; set; } = false;
+        
+        // Spawn protection - prevents accepting position updates right after teleport
+        public DateTime? LastSpawnTime { get; set; } = null;
+        public bool IsInSpawnProtection => LastSpawnTime.HasValue && 
+            DateTime.UtcNow - LastSpawnTime.Value < TimeSpan.FromSeconds(2.0);
+
         public Player(uint id, string name, IPEndPoint endPoint)
         {
             Id = id;

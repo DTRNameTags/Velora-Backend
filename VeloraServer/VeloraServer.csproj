@@ -34,13 +34,21 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Src\Configuration\ServerConfig.cs" />
+    <Compile Include="Src\Configuration\MatchmakingConfig.cs" />
+    <Compile Include="Src\Configuration\Maps\TestMap1_Config.cs" />
+    <Compile Include="Src\Configuration\Gamemodes\IGamemodeConfig.cs" />
+    <Compile Include="Src\Configuration\Gamemodes\TestGamemode_Config.cs" />
     <Compile Include="Src\Models\NetworkMessages.cs" />
     <Compile Include="Src\Models\Player.cs" />
+    <Compile Include="Src\Models\Matchmaking.cs" />
     <Compile Include="Src\Program.cs" />
     <Compile Include="Src\Server.cs" />
     <Compile Include="Src\Services\ClientConnection.cs" />
     <Compile Include="Src\Services\NetworkManager.cs" />
     <Compile Include="Src\Services\PlayerManager.cs" />
+    <Compile Include="Src\Services\MatchmakingService.cs" />
+    <Compile Include="Src\Services\InteractionZoneService.cs" />
+    <Compile Include="Src\Services\GamemodeFactory.cs" />
     <Compile Include="Src\Utils\Log.cs" />
     <None Include="VeloraServer.csproj" />
   </ItemGroup>
