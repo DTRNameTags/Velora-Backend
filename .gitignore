@@ -3,3 +3,7 @@
 /VeloraServer/bin
 /VeloraServer/logs
 /VeloraServer/obj
+
+*.sln
+*.csproj
+*.user
