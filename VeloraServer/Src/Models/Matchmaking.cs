@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using VeloraServer.Utils;
 using VeloraServer.Configuration;
 using VeloraServer.Configuration.Gamemodes;
 
@@ -129,14 +130,24 @@ namespace VeloraServer.Models
         {
             if (!HasMinimumPlayers()) return;
 
+            if (SpawnPositions.Length < Players.Count)
+            {
+                Log.Error($"Not enough spawn positions for match {MatchId}. " +
+                          $"Players: {Players.Count}, Spawns: {SpawnPositions.Length}");
+                return;
+            }
+
             State = MatchState.InProgress;
             StartedAt = DateTime.UtcNow;
 
-            // Teleport players to gamemode-specific spawn positions
+            // Teleport players to unique, randomized spawn positions
+            var shuffledSpawns = (Vector3[])SpawnPositions.Clone();
+            Shuffle(shuffledSpawns);
+
             for (int i = 0; i < Players.Count; i++)
             {
                 var player = Players[i].Player;
-                var spawnPosition = SpawnPositions[i % SpawnPositions.Length];
+                var spawnPosition = shuffledSpawns[i];
 
                 player.Position = spawnPosition;
                 player.Velocity = System.Numerics.Vector3.Zero; // Reset velocity on teleport
@@ -145,6 +156,16 @@ namespace VeloraServer.Models
                 player.QueueState = QueueState.InMatch;
                 player.IsReady = false; // Reset ready state for match
                 player.LastSpawnTime = DateTime.UtcNow; // Mark spawn time for protection
+            }
+        }
+
+        private static void Shuffle(Vector3[] array)
+        {
+            var rng = new Random();
+            for (int i = array.Length - 1; i > 0; i--)
+            {
+                int j = rng.Next(i + 1);
+                (array[i], array[j]) = (array[j], array[i]);
             }
         }
 

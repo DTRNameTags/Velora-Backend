@@ -179,6 +179,14 @@ namespace VeloraServer.Services
                 var realConnection = new ClientConnection(_udpClient, endPoint, player);
                 _playerManager.UpdateConnection(player.Id, realConnection);
 
+                // Assign a unique lobby spawn to avoid overlapping spawns on connect.
+                var lobbySpawn = GetLobbySpawnPosition(player.Id);
+                player.Position = lobbySpawn;
+                player.Velocity = System.Numerics.Vector3.Zero;
+                player.IsGrounded = true;
+                player.CurrentMap = "DefaultMap";
+                player.LastSpawnTime = DateTime.UtcNow;
+
                 var welcomeMessage = new ServerWelcomeMessage
                 {
                     AssignedPlayerId = player.Id,
@@ -205,6 +213,9 @@ namespace VeloraServer.Services
                 var joinData = SerializePlayerJoinMessage(joinMessage);
                 var joinMsg = new NetworkMessage(MessageType.PlayerJoined, joinData);
                 _playerManager.BroadcastMessage(joinMsg, player.Id);
+
+                // Send the assigned lobby spawn position to the player (self) to avoid client-side drift.
+                SendPlayerPositionToPlayer(player.Id, player);
             }
             catch (Exception ex)
             {
@@ -230,7 +241,18 @@ namespace VeloraServer.Services
             var player = _playerManager.Players.FirstOrDefault(p => p.EndPoint?.Equals(endPoint) == true);
             if (player == null) return;
 
-            if (data.Length >= 25)
+            // During spawn protection, ignore client position updates so we don't overwrite
+            // the server-assigned spawn with stale client positions (prevents overlap launches).
+            if (player.IsInSpawnProtection)
+            {
+                Log.DebugMessage($"Ignoring movement from {player.Name} during spawn protection");
+                return;
+            }
+
+            // Expected minimum packet (excluding type byte):
+            // playerId(4) + pos(12) + vel(12) + isGrounded(1) = 29 bytes
+            // Optional rotation (12) follows isGrounded => total 41 bytes.
+            if (data.Length >= 29)
             {
                 var offset = 0;
                 var playerId = BitConverter.ToUInt32(data, offset);
@@ -251,13 +273,18 @@ namespace VeloraServer.Services
                 
                 // Extract rotation from the message if available
                 System.Numerics.Vector3 rotation = System.Numerics.Vector3.Zero;
-                if (data.Length >= 37) // 25 + 12 bytes for rotation
+                if (data.Length >= 41) // 29 + 12 bytes for rotation
                 {
                     offset += 1; // skip isGrounded byte
                     var rotX = BitConverter.ToSingle(data, offset); offset += 4;
                     var rotY = BitConverter.ToSingle(data, offset); offset += 4;
                     var rotZ = BitConverter.ToSingle(data, offset); offset += 4;
                     rotation = new System.Numerics.Vector3(rotX, rotY, rotZ);
+                }
+                else
+                {
+                    // Advance offset past isGrounded to keep parsing consistent if extended later.
+                    offset += 1;
                 }
 
                 // Update player position on server
@@ -632,6 +659,42 @@ namespace VeloraServer.Services
             if (connection == null) return;
 
             var message = new NetworkMessage(MessageType.InteractionZoneExit, new byte[0]);
+            connection.SendMessage(message);
+        }
+
+        private System.Numerics.Vector3 GetLobbySpawnPosition(uint playerId)
+        {
+            var basePos = MatchmakingConfig.LOBBY_SPAWN_POSITION;
+            var waiting = MatchmakingConfig.QUEUE_WAITING_POSITIONS;
+            if (waiting.Length == 0)
+            {
+                return basePos;
+            }
+
+            var index = (int)(playerId == 0 ? 0 : (playerId - 1));
+            var offset = waiting[index % waiting.Length];
+            return new System.Numerics.Vector3(
+                basePos.X + offset.X,
+                basePos.Y,
+                basePos.Z + offset.Z
+            );
+        }
+
+        private void SendPlayerPositionToPlayer(uint playerId, Player player)
+        {
+            var connection = _playerManager.GetConnection(playerId);
+            if (connection == null) return;
+
+            var message = new byte[1 + 4 + 12 + 4 + 1];
+            var offset = 0;
+            message[offset++] = (byte)MessageType.PlayerPosition;
+            Array.Copy(BitConverter.GetBytes(player.Id), 0, message, offset, 4); offset += 4;
+            Array.Copy(BitConverter.GetBytes(player.Position.X), 0, message, offset, 4); offset += 4;
+            Array.Copy(BitConverter.GetBytes(player.Position.Y), 0, message, offset, 4); offset += 4;
+            Array.Copy(BitConverter.GetBytes(player.Position.Z), 0, message, offset, 4); offset += 4;
+            Array.Copy(BitConverter.GetBytes(player.Rotation.Y), 0, message, offset, 4); offset += 4;
+            message[offset] = (byte)(player.IsGrounded ? 1 : 0);
+
             connection.SendMessage(message);
         }
 
